@@ -1,6 +1,6 @@
 {
-"name":"Multi Bank Savings Tracker",
-"short_name":"BankTracker",
+"name":"RN Multi-Bank Tracker",
+"short_name":"RNTracker",
 "start_url":"index.html",
 "display":"standalone",
 "background_color":"#0f2027",
