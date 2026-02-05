@@ -1,78 +1,70 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Savings Tracker App</title>
+<title>Multi Bank Savings Tracker</title>
 
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#00c6ff">
 
 <style>
-*{margin:0;padding:0;box-sizing:border-box;font-family:Segoe UI}
 body{
-background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);
+font-family:Segoe UI;
+background:#0f2027;
 color:white;
-display:flex;
-justify-content:center;
-align-items:center;
-min-height:100vh;
-}
-.container{
-background:#1c1c1c;
-padding:25px;
-border-radius:15px;
-width:350px;
-box-shadow:0 10px 25px rgba(0,0,0,.5);
-}
-h1{text-align:center;margin-bottom:15px}
-.balance{
-background:#111;
 padding:15px;
-border-radius:10px;
-text-align:center;
-margin-bottom:15px;
-font-size:20px;
+}
+h1{text-align:center}
+.card{
+background:#1c1c1c;
+padding:15px;
+border-radius:12px;
+margin-top:10px;
 }
 input,select,button{
 width:100%;
 padding:10px;
-margin-top:10px;
+margin-top:8px;
 border:none;
 border-radius:8px;
 }
-input,select{background:#333;color:white}
 button{
 background:#00c6ff;
-color:black;
 font-weight:bold;
-cursor:pointer;
 }
-ul{
-list-style:none;
-margin-top:15px;
-max-height:200px;
-overflow:auto;
-}
-li{
-background:#2a2a2a;
-padding:8px;
-margin-top:6px;
-border-radius:6px;
+.bank{
 display:flex;
 justify-content:space-between;
+margin-top:6px;
+background:#2a2a2a;
+padding:8px;
+border-radius:6px;
+}
+.total{
+font-size:20px;
+text-align:center;
+margin-top:10px;
 }
 </style>
 </head>
 
 <body>
 
-<div class="container">
-<h1>💰 Savings Tracker</h1>
+<h1>🏦 Multi Bank Tracker</h1>
 
-<div class="balance">
-Balance: ₱ <span id="balance">0</span>
+<div class="card">
+<div class="total">
+Total Savings: ₱ <span id="total">0</span>
 </div>
+
+<select id="bank">
+<option>GCash</option>
+<option>Maya</option>
+<option>GoTyme</option>
+<option>MariBank</option>
+<option>BDO</option>
+</select>
 
 <input type="number" id="amount" placeholder="Enter Amount">
 
@@ -82,46 +74,53 @@ Balance: ₱ <span id="balance">0</span>
 </select>
 
 <button onclick="addTransaction()">Add Transaction</button>
+</div>
 
-<ul id="history"></ul>
-
+<div class="card">
+<h3>Balances</h3>
+<div id="balances"></div>
 </div>
 
 <script>
-let history = JSON.parse(localStorage.getItem("transactions")) || [];
+let banks=JSON.parse(localStorage.getItem("banks"))||{
+GCash:0,
+Maya:0,
+GoTyme:0,
+MariBank:0,
+BDO:0
+};
 
-function saveData(){
-localStorage.setItem("transactions",JSON.stringify(history));
+function save(){
+localStorage.setItem("banks",JSON.stringify(banks));
 }
 
 function render(){
-let balance=0;
-const list=document.getElementById("history");
-list.innerHTML="";
+let total=0;
+const div=document.getElementById("balances");
+div.innerHTML="";
 
-history.forEach(item=>{
-if(item.type==="deposit"){balance+=item.amount}
-else{balance-=item.amount}
+for(let b in banks){
+total+=banks[b];
+div.innerHTML+=`<div class="bank"><span>${b}</span><span>₱${banks[b]}</span></div>`;
+}
 
-const li=document.createElement("li");
-li.innerHTML=`<span>${item.type}</span><span>₱${item.amount}</span>`;
-list.appendChild(li);
-});
-
-document.getElementById("balance").innerText=balance;
+document.getElementById("total").innerText=total;
 }
 
 function addTransaction(){
+const bank=document.getElementById("bank").value;
 const amount=parseFloat(document.getElementById("amount").value);
 const type=document.getElementById("type").value;
 
-if(!amount || amount<=0){
+if(!amount||amount<=0){
 alert("Enter valid amount");
 return;
 }
 
-history.push({amount,type});
-saveData();
+if(type==="deposit"){banks[bank]+=amount}
+else{banks[bank]-=amount}
+
+save();
 render();
 document.getElementById("amount").value="";
 }
