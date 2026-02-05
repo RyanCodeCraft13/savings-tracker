@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Savings Tracker App</title>
+
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#00c6ff">
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:Segoe UI}
+body{
+background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);
+color:white;
+display:flex;
+justify-content:center;
+align-items:center;
+min-height:100vh;
+}
+.container{
+background:#1c1c1c;
+padding:25px;
+border-radius:15px;
+width:350px;
+box-shadow:0 10px 25px rgba(0,0,0,.5);
+}
+h1{text-align:center;margin-bottom:15px}
+.balance{
+background:#111;
+padding:15px;
+border-radius:10px;
+text-align:center;
+margin-bottom:15px;
+font-size:20px;
+}
+input,select,button{
+width:100%;
+padding:10px;
+margin-top:10px;
+border:none;
+border-radius:8px;
+}
+input,select{background:#333;color:white}
+button{
+background:#00c6ff;
+color:black;
+font-weight:bold;
+cursor:pointer;
+}
+ul{
+list-style:none;
+margin-top:15px;
+max-height:200px;
+overflow:auto;
+}
+li{
+background:#2a2a2a;
+padding:8px;
+margin-top:6px;
+border-radius:6px;
+display:flex;
+justify-content:space-between;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+<h1>💰 Savings Tracker</h1>
+
+<div class="balance">
+Balance: ₱ <span id="balance">0</span>
+</div>
+
+<input type="number" id="amount" placeholder="Enter Amount">
+
+<select id="type">
+<option value="deposit">Deposit</option>
+<option value="withdraw">Withdraw</option>
+</select>
+
+<button onclick="addTransaction()">Add Transaction</button>
+
+<ul id="history"></ul>
+
+</div>
+
+<script>
+let history = JSON.parse(localStorage.getItem("transactions")) || [];
+
+function saveData(){
+localStorage.setItem("transactions",JSON.stringify(history));
+}
+
+function render(){
+let balance=0;
+const list=document.getElementById("history");
+list.innerHTML="";
+
+history.forEach(item=>{
+if(item.type==="deposit"){balance+=item.amount}
+else{balance-=item.amount}
+
+const li=document.createElement("li");
+li.innerHTML=`<span>${item.type}</span><span>₱${item.amount}</span>`;
+list.appendChild(li);
+});
+
+document.getElementById("balance").innerText=balance;
+}
+
+function addTransaction(){
+const amount=parseFloat(document.getElementById("amount").value);
+const type=document.getElementById("type").value;
+
+if(!amount || amount<=0){
+alert("Enter valid amount");
+return;
+}
+
+history.push({amount,type});
+saveData();
+render();
+document.getElementById("amount").value="";
+}
+
+render();
+
+if("serviceWorker" in navigator){
+navigator.serviceWorker.register("service-worker.js");
+}
+</script>
+
+</body>
+</html>
