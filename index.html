@@ -1,225 +1,64 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>RN Multi-Bank Savings Tracker</title>
+<title>RN Tracker V2</title>
 
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#00c6ff">
-
-<style>
-/* ---------------- General ---------------- */
-body{
-font-family:Segoe UI,sans-serif;
-background:#0f2027;
-color:white;
-padding:15px;
-transition: background 0.3s, color 0.3s;
-}
-body.light{background:#f2f2f2;color:#111;}
-h1{text-align:center;margin-bottom:15px;}
-button{cursor:pointer;border:none;border-radius:8px;padding:8px;margin-top:5px;}
-input,select,button,textarea{width:100%;padding:8px;margin-top:5px;border-radius:8px;border:none;}
-button{background:#00c6ff;color:black;font-weight:bold;}
-button:hover{opacity:.8;}
-.card{background:#1c1c1c;padding:15px;border-radius:12px;margin-top:10px;transition: background 0.3s;}
-body.light .card{background:#e0e0e0;color:#111;}
-.bank{display:flex;justify-content:space-between;margin-top:6px;padding:8px;border-radius:6px;background:#2a2a2a;}
-body.light .bank{background:#ccc;}
-.total{font-size:20px;text-align:center;margin-bottom:10px;}
-.progress{height:12px;background:#333;border-radius:6px;margin-top:5px;overflow:hidden;}
-.progress div{height:12px;background:#00c6ff;width:0%;border-radius:6px;}
-#chartContainer{width:100%;height:200px;margin-top:15px;}
-.pin-screen{position:fixed;top:0;left:0;width:100%;height:100%;background:#111;color:white;display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:999;}
-.pin-screen.light{background:#f2f2f2;color:#111;}
-.pin-screen input{width:80%;text-align:center;font-size:20px;}
-.pin-screen button{width:50%;}
-</style>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 </head>
+
 <body>
 
-<!-- PIN SCREEN -->
-<div id="pinScreen" class="pin-screen">
-<h2>Enter 4-Digit PIN</h2>
-<input type="password" id="pinInput" maxlength="4" placeholder="••••">
+<div id="pinScreen">
+<h2>Enter PIN</h2>
+<input type="password" id="pinInput">
 <button onclick="checkPIN()">Unlock</button>
+<button onclick="changePIN()">Change PIN</button>
 </div>
 
-<h1>🏦 RN Multi-Bank Tracker</h1>
+<h1>🏦 RN Tracker V2</h1>
 
-<!-- Theme Toggle -->
-<button onclick="toggleTheme()">Toggle Dark/Light Mode</button>
-
-<!-- Bank Operations -->
 <div class="card">
-<h3>Bank Operations</h3>
-<select id="bank">
-<option>GCash</option>
-<option>Maya</option>
-<option>GoTyme</option>
-<option>MariBank</option>
-<option>BDO</option>
-</select>
-
-<input type="number" id="amount" placeholder="Enter Amount">
+<select id="bank"></select>
+<input type="number" id="amount" placeholder="Amount">
 <select id="type">
 <option value="deposit">Deposit</option>
 <option value="withdraw">Withdraw</option>
 <option value="transfer">Transfer</option>
 </select>
+<select id="transferBank"></select>
 
-<select id="transferBank">
-<option>GCash</option>
-<option>Maya</option>
-<option>GoTyme</option>
-<option>MariBank</option>
-<option>BDO</option>
-</select>
-
-<textarea id="note" placeholder="Add note (optional)"></textarea>
 <select id="category">
-<option value="General">Category: General</option>
-<option value="Food">Food</option>
-<option value="Bills">Bills</option>
-<option value="Entertainment">Entertainment</option>
-<option value="Other">Other</option>
+<option>Food</option>
+<option>Bills</option>
+<option>General</option>
+<option>Entertainment</option>
 </select>
 
-<button onclick="addTransaction()">Add Transaction</button>
-<button onclick="exportCSV()">Export CSV</button>
+<input id="note" placeholder="Note">
+
+<button onclick="addTransaction()">Add</button>
+<button onclick="exportBackup()">Backup JSON</button>
+<input type="file" onchange="importBackup(event)">
 </div>
 
-<!-- Bank Balances -->
 <div class="card">
 <h3>Balances</h3>
 <div id="balances"></div>
 </div>
 
-<!-- Savings Goals -->
 <div class="card">
-<h3>Monthly Savings Goals</h3>
-<div id="goals"></div>
+<h3>Monthly Summary</h3>
+<div id="summary"></div>
 </div>
 
-<!-- Analytics Chart -->
 <div class="card">
-<h3>Analytics</h3>
-<canvas id="chartCanvas"></canvas>
+<canvas id="pieChart"></canvas>
 </div>
 
-<!-- Scripts -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-// ---------------- PIN LOCK ----------------
-let pin = localStorage.getItem("userPIN") || "1234";
-let unlocked = false;
-const pinScreen = document.getElementById("pinScreen");
-function checkPIN(){
-  const val=document.getElementById("pinInput").value;
-  if(val===pin){pinScreen.style.display="none"; unlocked=true; render();} 
-  else{alert("Wrong PIN");}
-}
-
-// ---------------- THEME ----------------
-function toggleTheme(){
-  document.body.classList.toggle("light");
-  document.getElementById("pinScreen").classList.toggle("light");
-}
-
-// ---------------- BANK DATA ----------------
-let banks=JSON.parse(localStorage.getItem("banks"))||{
-GCash:0,Maya:0,GoTyme:0,MariBank:0,BDO:0
-};
-let goals=JSON.parse(localStorage.getItem("goals"))||{
-GCash:5000,Maya:3000,GoTyme:4000,MariBank:6000,BDO:10000
-};
-let transactions=JSON.parse(localStorage.getItem("transactions"))||[];
-
-// ---------------- SAVE DATA ----------------
-function saveData(){
-localStorage.setItem("banks",JSON.stringify(banks));
-localStorage.setItem("goals",JSON.stringify(goals));
-localStorage.setItem("transactions",JSON.stringify(transactions));
-}
-
-// ---------------- RENDER ----------------
-function render(){
-if(!unlocked) return;
-let total=0;
-let balancesDiv=document.getElementById("balances");
-balancesDiv.innerHTML="";
-for(let b in banks){
-total+=banks[b];
-balancesDiv.innerHTML+=`<div class="bank"><span>${b}</span><span>₱${banks[b]}</span></div>`;
-}
-
-// Goals
-let goalsDiv=document.getElementById("goals");
-goalsDiv.innerHTML="";
-for(let b in banks){
-let percent=Math.min((banks[b]/goals[b])*100,100);
-goalsDiv.innerHTML+=`<p>${b}: ₱${banks[b]} / ₱${goals[b]}</p>
-<div class="progress"><div style="width:${percent}%"></div></div>`;
-}
-
-// Chart
-let ctx=document.getElementById("chartCanvas").getContext("2d");
-let labels=transactions.map(t=>t.date);
-let data=transactions.map(t=>t.type==="deposit"?t.amount:-t.amount);
-if(window.myChart) window.myChart.destroy();
-window.myChart=new Chart(ctx,{type:'line',data:{labels, datasets:[{label:'Balance Change', data, borderColor:'#00c6ff',backgroundColor:'rgba(0,198,255,0.2)'}]},options:{responsive:true,maintainAspectRatio:false}});
-}
-
-// ---------------- ADD TRANSACTION ----------------
-function addTransaction(){
-if(!unlocked){alert("Unlock PIN first"); return;}
-let bank=document.getElementById("bank").value;
-let type=document.getElementById("type").value;
-let amount=parseFloat(document.getElementById("amount").value);
-let note=document.getElementById("note").value;
-let category=document.getElementById("category").value;
-let transferBank=document.getElementById("transferBank").value;
-
-if(!amount||amount<=0){alert("Enter valid amount"); return;}
-
-let date=new Date().toLocaleString();
-
-if(type==="deposit"){banks[bank]+=amount;}
-else if(type==="withdraw"){banks[bank]-=amount;}
-else if(type==="transfer"){
-if(bank===transferBank){alert("Select different bank for transfer"); return;}
-banks[bank]-=amount;
-banks[transferBank]+=amount;
-}
-
-transactions.push({bank,type,amount,date,note,category,transferBank:type==="transfer"?transferBank:""});
-saveData();
-render();
-document.getElementById("amount").value="";
-document.getElementById("note").value="";
-}
-
-// ---------------- EXPORT CSV ----------------
-function exportCSV(){
-let csv="Bank,Type,Amount,Date,Note,Category,TransferTo\n";
-transactions.forEach(t=>{
-csv+=`${t.bank},${t.type},${t.amount},${t.date},"${t.note}",${t.category},${t.transferBank}\n`;
-});
-let blob=new Blob([csv],{type:"text/csv"});
-let link=document.createElement("a");
-link.href=URL.createObjectURL(blob);
-link.download="transactions.csv";
-link.click();
-}
-
-// INITIAL RENDER
-render();
-
-// ---------------- SERVICE WORKER ----------------
-if("serviceWorker" in navigator){navigator.serviceWorker.register("service-worker.js");}
-</script>
-
+<script src="app.js"></script>
 </body>
 </html>
