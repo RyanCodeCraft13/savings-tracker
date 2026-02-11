@@ -10,7 +10,6 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
-/* Same styles as previous version (ATM cards, modal, FAB, buttons, etc.) */
 body{font-family:'Segoe UI',sans-serif;background:#0f2027;color:#fff;margin:0;padding:15px;transition:.3s;}
 body.light{background:#f2f2f2;color:#111;}
 h1{margin-bottom:15px;}
@@ -97,47 +96,79 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
 // ===== PIN & Theme =====
-let pin=localStorage.getItem("pin")||"1234";
-let unlocked=false;
-function unlock(){if(document.getElementById("pinInput").value===pin){document.getElementById("pinScreen").style.display="none";unlocked=true;render();}else alert("Wrong PIN");}
-function changePIN(){let newPin=prompt("Enter new PIN");if(newPin){pin=newPin;localStorage.setItem("pin",pin);}}
-function toggleTheme(){document.body.classList.toggle("light");}
+let pin = localStorage.getItem("pin") || "1234";
+let unlocked = false;
+function unlock() {
+  if (document.getElementById("pinInput").value === pin) {
+    document.getElementById("pinScreen").style.display = "none";
+    unlocked = true;
+    render();
+  } else alert("Wrong PIN");
+}
+function changePIN() {
+  let newPin = prompt("Enter new PIN");
+  if (newPin) { pin = newPin; localStorage.setItem("pin", pin); }
+}
+function toggleTheme() { document.body.classList.toggle("light"); }
 
 // ===== Data =====
-let banks={},goals={GCash:5000,Maya:3000,GoTyme:4000,MariBank:6000,BDO:10000},transactions=[];
+let banks = {}, goals = { GCash:5000, Maya:3000, GoTyme:4000, MariBank:6000, BDO:10000 }, transactions = [];
 
-// Realtime Firestore Listener
+// ===== Firestore Listener =====
 db.collection("transactions").orderBy("date").onSnapshot((snapshot)=>{
   banks={GCash:0,Maya:0,GoTyme:0,MariBank:0,BDO:0};
   transactions=[];
   snapshot.forEach(doc=>{
     let t=doc.data();
+    let amt = parseFloat(t.amount);
     transactions.push(t);
-    if(t.type==="deposit") banks[t.bank]+=t.amount;
-    if(t.type==="withdraw") banks[t.bank]-=t.amount;
-    if(t.type==="transfer"){banks[t.bank]-=t.amount;banks[t.transfer]+=t.amount;}
+    if(t.type==="deposit") banks[t.bank] += amt;
+    if(t.type==="withdraw") banks[t.bank] -= amt;
+    if(t.type==="transfer"){ banks[t.bank]-=amt; banks[t.transfer]+=amt; }
   });
   if(unlocked) render();
 });
 
 // ===== Add Transaction =====
+const bankInput=document.getElementById("bank"),
+      amountInput=document.getElementById("amount"),
+      typeInput=document.getElementById("type"),
+      transferBankInput=document.getElementById("transferBank"),
+      categoryInput=document.getElementById("category"),
+      noteInput=document.getElementById("note");
+
 function addTransaction(){
   if(!unlocked) return alert("Unlock first");
-  let bank=bankInput.value,type=typeInput.value,amount=parseFloat(amountInput.value),transfer=transferBank.value,category=categoryInput.value,note=noteInput.value;
-  if(!amount) return;
-  let t={bank,type,amount,date:new Date().toISOString(),category,note,transfer:type==="transfer"?transfer:null};
+  let bank = bankInput.value;
+  let type = typeInput.value;
+  let amount = parseFloat(amountInput.value);
+  if(!amount) return alert("Enter valid amount");
+  let transferBankValue = transferBankInput.value;
+  let category = categoryInput.value;
+  let note = noteInput.value;
+
+  let t = {
+    bank,
+    type,
+    amount,
+    date: new Date().toISOString(),
+    category,
+    note,
+    transfer: type==="transfer"?transferBankValue:null
+  };
+
   db.collection("transactions").add(t);
-  amountInput.value="";noteInput.value="";
+  amountInput.value=""; noteInput.value="";
 }
 
 // ===== Render =====
-function render(){
+function render() {
   if(!unlocked) return;
-  const bankCards=document.getElementById("bankCards"); bankCards.innerHTML="";
+  const bankCards=document.getElementById("bankCards");
+  bankCards.innerHTML="";
   for(let b in banks){
     let lastTx=transactions.filter(t=>t.bank===b).slice(-1)[0];
     let lastTxText=lastTx?`${lastTx.type} ₱${lastTx.amount}`:"No transactions";
-    let cardNumber="**** **** **** "+Math.floor(1000+Math.random()*9000);
     let percent=Math.min((banks[b]/goals[b])*100,100);
     let gradient="",logo="";
     switch(b){
@@ -156,7 +187,7 @@ function render(){
           </div>
           <p>₱${banks[b]}</p>
           <div class="progress"><div style="width:${percent}%"></div></div>
-          <small onclick="showTransactions('${b}')">Last: ${lastTxText}</small>
+          <small onclick="event.stopPropagation(); showTransactions('${b}')">Last: ${lastTxText}</small>
         </div>
         <div class="bank-card-back">
           <div class="card-back-content">
@@ -169,25 +200,62 @@ function render(){
       </div>
     </div>`;
   }
-  renderCharts();renderGoals();
+  renderCharts(); renderGoals();
 }
 
 // ===== Charts & Goals =====
-function renderGoals(){let goalsDiv=document.getElementById("goals");goalsDiv.innerHTML="";for(let b in banks){let percent=Math.min((banks[b]/goals[b])*100,100);goalsDiv.innerHTML+=`<p>${b} ₱${banks[b]} / ₱${goals[b]}</p><div class="progress"><div style="width:${percent}%"></div></div>`;}}
-function renderCharts(){let ctx=document.getElementById("lineChart").getContext("2d");if(window.lineChartObj) window.lineChartObj.destroy();window.lineChartObj=new Chart(ctx,{type:'line',data:{labels:transactions.map(t=>t.date),datasets:[{label:'Balance Change',data:transactions.map(t=>t.type==="deposit"?t.amount:-t.amount),borderColor:'#00c6ff',fill:false}]}});
-let pie=document.getElementById("pieChart").getContext("2d");if(window.pieChartObj) window.pieChartObj.destroy();let categoryTotals={};transactions.forEach(t=>categoryTotals[t.category]=(categoryTotals[t.category]||0)+t.amount);window.pieChartObj=new Chart(pie,{type:'pie',data:{labels:Object.keys(categoryTotals),datasets:[{data:Object.values(categoryTotals),backgroundColor:['#00c6ff','#ff7b00','#ff0044','#00ff88']]}}});}
+function renderGoals() {
+  let goalsDiv=document.getElementById("goals");
+  goalsDiv.innerHTML="";
+  for(let b in banks){
+    let percent=Math.min((banks[b]/goals[b])*100,100);
+    goalsDiv.innerHTML+=`<p>${b} ₱${banks[b]} / ₱${goals[b]}</p><div class="progress"><div style="width:${percent}%"></div></div>`;
+  }
+}
+
+function renderCharts() {
+  let ctx=document.getElementById("lineChart").getContext("2d");
+  if(window.lineChartObj) window.lineChartObj.destroy();
+  let runningBalance = [];
+  let total=0;
+  transactions.forEach(t=>{
+    let amt = t.type==="deposit"?t.amount: t.type==="withdraw"?-t.amount:0;
+    total+=amt;
+    runningBalance.push(total);
+  });
+  window.lineChartObj=new Chart(ctx,{type:'line',data:{labels:transactions.map(t=>t.date),datasets:[{label:'Balance Change',data:runningBalance,borderColor:'#00c6ff',fill:false}]}});
+  
+  let pie=document.getElementById("pieChart").getContext("2d");
+  if(window.pieChartObj) window.pieChartObj.destroy();
+  let categoryTotals={};
+  transactions.forEach(t=>categoryTotals[t.category]=(categoryTotals[t.category]||0)+t.amount);
+  window.pieChartObj=new Chart(pie,{type:'pie',data:{labels:Object.keys(categoryTotals),datasets:[{data:Object.values(categoryTotals),backgroundColor:['#00c6ff','#ff7b00','#ff0044','#00ff88']]}}});
+}
 
 // ===== Other Functions =====
 function flipCard(card){card.classList.toggle("flipped");}
-function showTransactions(bank){const modal=document.getElementById("transactionsModal");const div=document.getElementById("modalTransactions");div.innerHTML="";transactions.filter(t=>t.bank===bank).forEach(t=>{div.innerHTML+=`<div class="transaction"><span>${t.date} - ${t.type}</span><span>₱${t.amount}</span></div>`;});modal.style.display="flex";}
+function showTransactions(bank){
+  const modal=document.getElementById("transactionsModal");
+  const div=document.getElementById("modalTransactions");
+  div.innerHTML="";
+  transactions.filter(t=>t.bank===bank).forEach(t=>{
+    div.innerHTML+=`<div class="transaction"><span>${t.date} - ${t.type}</span><span>₱${t.amount}</span></div>`;
+  });
+  modal.style.display="flex";
+}
 function closeTransactions(){document.getElementById("transactionsModal").style.display="none";}
-function exportCSV(){let csv="Bank,Type,Amount,Date,Category,Note\n";transactions.forEach(t=>csv+=`${t.bank},${t.type},${t.amount},${t.date},${t.category},"${t.note}"\n`);let blob=new Blob([csv]);let a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="transactions.csv";a.click();}
+function exportCSV(){
+  let csv="Bank,Type,Amount,Date,Category,Note\n";
+  transactions.forEach(t=>csv+=`${t.bank},${t.type},${t.amount},${t.date},${t.category},"${t.note}"\n`);
+  let blob=new Blob([csv]);
+  let a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="transactions.csv";
+  a.click();
+}
 function scrollToTop(){window.scrollTo({top:0,behavior:"smooth"});}
 
-// Inputs
-const bankInput=document.getElementById("bank"),amountInput=document.getElementById("amount"),typeInput=document.getElementById("type"),transferBank=document.getElementById("transferBank"),categoryInput=document.getElementById("category"),noteInput=document.getElementById("note");
-
-// Register Service Worker (PWA)
+// ===== Service Worker (PWA) =====
 if('serviceWorker' in navigator){navigator.serviceWorker.register('service-worker.js');}
 </script>
 </body>
