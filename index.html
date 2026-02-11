@@ -3,21 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>RN Multi-Bank Tracker V2</title>
+<title>RN Multi-Bank Tracker V2 – ATM Cards</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#00c6ff">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
 body{
-  font-family: 'Segoe UI', sans-serif;
-  background: #0f2027;
-  color: #fff;
-  margin: 0; padding: 15px;
-  transition: .3s;
+  font-family:'Segoe UI',sans-serif;
+  background:#0f2027;color:#fff;margin:0;padding:15px;transition:.3s;
 }
 body.light{background:#f2f2f2;color:#111;}
-
 h1{margin-bottom:15px;}
 
 /* ====== PIN Screen ====== */
@@ -25,75 +21,54 @@ h1{margin-bottom:15px;}
   position:fixed;top:0;left:0;width:100%;height:100%;
   background:#111;display:flex;flex-direction:column;
   justify-content:center;align-items:center;z-index:999;
-  transition:.3s;
 }
-.pin-screen h2{margin-bottom:10px;}
-.pin-screen input{
-  padding:10px;font-size:20px;width:100px;text-align:center;
-  border-radius:10px;border:none;margin-bottom:15px;
-}
+.pin-screen input{padding:10px;font-size:20px;width:100px;text-align:center;border-radius:10px;border:none;margin-bottom:15px;}
 
-/* ====== ATM Cards ====== */
+/* ====== ATM Cards Container ====== */
 #bankCards{
-  display:flex;overflow-x:auto;scroll-snap-type:x mandatory;
-  padding-bottom:15px;
-  margin-bottom:15px;
+  display:flex;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:15px;margin-bottom:15px;
 }
 .bank-card{
-  min-width:250px;
-  height:150px;
-  background:linear-gradient(135deg,#00c6ff,#0072ff);
-  color:white;
-  border-radius:20px;
-  margin-right:15px;
-  padding:15px;
-  flex-shrink:0;
-  scroll-snap-align:start;
-  position:relative;
-  box-shadow:0 10px 25px rgba(0,0,0,0.4);
-  cursor:pointer;
-  transition:.3s;
+  min-width:250px;height:160px;border-radius:20px;margin-right:15px;
+  color:white;position:relative;flex-shrink:0;scroll-snap-align:start;
+  perspective:1000px;cursor:pointer;
 }
-.bank-card:hover{transform:scale(1.05);}
+.bank-card-inner{
+  width:100%;height:100%;border-radius:20px;
+  transition: transform 0.6s;
+  transform-style: preserve-3d;
+  box-shadow:0 10px 25px rgba(0,0,0,0.4);
+  padding:15px;display:flex;flex-direction:column;justify-content:space-between;
+}
+.bank-card.flipped .bank-card-inner{transform:rotateY(180deg);}
+.bank-card-front,.bank-card-back{
+  position:absolute;width:100%;height:100%;backface-visibility:hidden;border-radius:20px;padding:15px;display:flex;flex-direction:column;justify-content:space-between;
+}
+.bank-card-front{background:linear-gradient(135deg,#00c6ff,#0072ff);}
+.bank-card-back{background:#333;transform:rotateY(180deg);color:#fff;}
+
+/* Card front details */
 .bank-card h2{margin:0;font-size:18px;}
 .bank-card p{margin:5px 0;font-size:22px;font-weight:bold;}
-.bank-card small{position:absolute;bottom:10px;left:15px;font-size:12px;opacity:0.8;}
+.bank-card small{font-size:12px;opacity:.8;}
+.progress{height:6px;background:rgba(255,255,255,.2);border-radius:6px;overflow:hidden;}
+.progress div{height:6px;background:#fff;width:0%;border-radius:6px;transition:.5s;}
 
-/* ====== Transaction Modal ====== */
+/* Back card details */
+.card-back-content{margin-top:20px;font-size:14px;line-height:1.4;}
+
+/* FAB */
+.fab{position:fixed;bottom:20px;right:20px;background:#00c6ff;border-radius:50%;width:60px;height:60px;font-size:30px;color:#fff;display:flex;justify-content:center;align-items:center;cursor:pointer;box-shadow:0 5px 15px rgba(0,0,0,0.3);}
+
+/* Modal transactions */
 #transactionsModal{
   position:fixed;top:0;left:0;width:100%;height:100%;
-  background:rgba(0,0,0,0.9);
-  display:none;flex-direction:column;padding:20px;
-  overflow-y:auto;z-index:1000;
+  background:rgba(0,0,0,0.95);display:none;flex-direction:column;padding:20px;overflow-y:auto;z-index:1000;color:#fff;
 }
-#transactionsModal h2{text-align:center;}
-.transaction{
-  display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #555;
-}
-
-/* ====== Buttons & Inputs ====== */
-button,input,select,textarea{
-  width:100%;padding:10px;margin-top:5px;border-radius:8px;border:none;font-size:16px;
-}
+.transaction{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #555;}
+button,input,select,textarea{width:100%;padding:10px;margin-top:5px;border-radius:8px;border:none;font-size:16px;}
 button{background:#00c6ff;color:white;font-weight:bold;cursor:pointer;}
 button:hover{opacity:.85;}
-input,select,textarea{font-size:16px;}
-
-/* ====== Progress bars ====== */
-.progress{height:10px;background:#333;border-radius:6px;margin-top:4px;overflow:hidden;}
-.progress div{height:10px;background:#00c6ff;width:0%;border-radius:6px;transition:.5s;}
-
-/* ====== Charts ====== */
-canvas{margin-top:10px;}
-
-/* ====== FAB ====== */
-.fab{
-  position:fixed;bottom:20px;right:20px;
-  background:#00c6ff;border-radius:50%;
-  width:60px;height:60px;font-size:30px;
-  color:#fff;display:flex;justify-content:center;align-items:center;
-  cursor:pointer;box-shadow:0 5px 15px rgba(0,0,0,0.3);
-}
 </style>
 </head>
 <body>
@@ -158,7 +133,6 @@ canvas{margin-top:10px;}
 <h3>Savings Goals</h3>
 <div id="goals"></div>
 </div>
-
 <div class="card">
 <h3>Analytics</h3>
 <canvas id="lineChart"></canvas>
@@ -169,141 +143,94 @@ canvas{margin-top:10px;}
 <div class="fab" onclick="scrollToTop()">+</div>
 
 <script>
-// ====== PIN & Theme ======
+// ===== PIN & Theme =====
 let pin=localStorage.getItem("pin")||"1234";
 let unlocked=false;
-function unlock(){
-  if(document.getElementById("pinInput").value===pin){
-    document.getElementById("pinScreen").style.display="none";
-    unlocked=true;
-    render();
-  }else alert("Wrong PIN");
-}
-function changePIN(){
-  let newPin=prompt("Enter new PIN");
-  if(newPin){pin=newPin; localStorage.setItem("pin",pin);}
-}
+function unlock(){if(document.getElementById("pinInput").value===pin){document.getElementById("pinScreen").style.display="none";unlocked=true;render();}else alert("Wrong PIN");}
+function changePIN(){let newPin=prompt("Enter new PIN");if(newPin){pin=newPin;localStorage.setItem("pin",pin);}}
 function toggleTheme(){document.body.classList.toggle("light");}
 
-// ====== Bank Data ======
-let banks=JSON.parse(localStorage.getItem("banks"))||{
-  GCash:0,Maya:0,GoTyme:0,MariBank:0,BDO:0
-};
-let goals={
-  GCash:5000,Maya:3000,GoTyme:4000,MariBank:6000,BDO:10000
-};
+// ===== Bank Data =====
+let banks=JSON.parse(localStorage.getItem("banks"))||{GCash:0,Maya:0,GoTyme:0,MariBank:0,BDO:0};
+let goals={GCash:5000,Maya:3000,GoTyme:4000,MariBank:6000,BDO:10000};
 let transactions=JSON.parse(localStorage.getItem("transactions"))||[];
 
-// ====== Add Transaction ======
-function save(){
-  localStorage.setItem("banks",JSON.stringify(banks));
-  localStorage.setItem("transactions",JSON.stringify(transactions));
-}
-
+// ===== Add Transaction =====
+function save(){localStorage.setItem("banks",JSON.stringify(banks));localStorage.setItem("transactions",JSON.stringify(transactions));}
 function addTransaction(){
   if(!unlocked)return alert("Unlock first");
-  let bank=bankInput.value;
-  let type=typeInput.value;
-  let amount=parseFloat(amountInput.value);
-  let transfer=transferBank.value;
-  let category=categoryInput.value;
-  let note=noteInput.value;
+  let bank=bankInput.value,type=typeInput.value,amount=parseFloat(amountInput.value),transfer=transferBank.value,category=categoryInput.value,note=noteInput.value;
   if(!amount)return;
   if(type==="deposit") banks[bank]+=amount;
   if(type==="withdraw") banks[bank]-=amount;
-  if(type==="transfer"){banks[bank]-=amount; banks[transfer]+=amount;}
+  if(type==="transfer"){banks[bank]-=amount;banks[transfer]+=amount;}
   transactions.push({bank,type,amount,date:new Date().toLocaleDateString(),category,note});
-  save();
-  render();
-  amountInput.value=""; noteInput.value="";
+  save();render();amountInput.value="";noteInput.value="";
 }
 
-// ====== Render UI ======
+// ===== Render UI =====
 function render(){
   if(!unlocked)return;
-
-  // ATM Cards
-  let bankCards=document.getElementById("bankCards");
+  const bankCards=document.getElementById("bankCards");
   bankCards.innerHTML="";
   for(let b in banks){
     let lastTx=transactions.filter(t=>t.bank===b).slice(-1)[0];
     let lastTxText = lastTx ? `${lastTx.type} ₱${lastTx.amount}` : "No transactions";
+    let cardNumber="**** **** **** "+Math.floor(1000+Math.random()*9000);
+    let percent=Math.min((banks[b]/goals[b])*100,100);
     bankCards.innerHTML+=`
-      <div class="bank-card" onclick="showTransactions('${b}')">
-        <h2>${b}</h2>
-        <p>₱${banks[b]}</p>
-        <small>Goal: ₱${goals[b]}</small><br>
-        <small>Last: ${lastTxText}</small>
+      <div class="bank-card" onclick="flipCard(this)">
+        <div class="bank-card-inner">
+          <div class="bank-card-front">
+            <h2>${b}</h2>
+            <p>₱${banks[b]}</p>
+            <div class="progress"><div style="width:${percent}%"></div></div>
+            <small>Last: ${lastTxText}</small>
+          </div>
+          <div class="bank-card-back">
+            <div class="card-back-content">
+              <p>Card Number: ${cardNumber}</p>
+              <p>Expiry: 12/30</p>
+              <p>CVV: ***</p>
+            </div>
+          </div>
+        </div>
       </div>`;
   }
 
   // Goals
-  let goalsDiv=document.getElementById("goals");
-  goalsDiv.innerHTML="";
-  for(let b in banks){
-    let percent=Math.min((banks[b]/goals[b])*100,100);
-    goalsDiv.innerHTML+=`<p>${b} ₱${banks[b]} / ₱${goals[b]}</p>
-    <div class="progress"><div style="width:${percent}%"></div></div>`;
-  }
+  let goalsDiv=document.getElementById("goals");goalsDiv.innerHTML="";
+  for(let b in banks){let percent=Math.min((banks[b]/goals[b])*100,100);
+    goalsDiv.innerHTML+=`<p>${b} ₱${banks[b]} / ₱${goals[b]}</p><div class="progress"><div style="width:${percent}%"></div></div>`;}
 
-  // Line Chart
+  // Charts
   let ctx=document.getElementById("lineChart").getContext("2d");
   if(window.lineChartObj) window.lineChartObj.destroy();
-  window.lineChartObj=new Chart(ctx,{
-    type:'line',
-    data:{
-      labels:transactions.map(t=>t.date),
-      datasets:[{label:'Balance Change',data:transactions.map(t=>t.type==="deposit"?t.amount:-t.amount),borderColor:'#00c6ff',fill:false}]
-    }
-  });
-
-  // Pie Chart
+  window.lineChartObj=new Chart(ctx,{type:'line',data:{labels:transactions.map(t=>t.date),datasets:[{label:'Balance Change',data:transactions.map(t=>t.type==="deposit"?t.amount:-t.amount),borderColor:'#00c6ff',fill:false}]}});
   let pie=document.getElementById("pieChart").getContext("2d");
   if(window.pieChartObj) window.pieChartObj.destroy();
-  let categoryTotals={};
-  transactions.forEach(t=>categoryTotals[t.category]=(categoryTotals[t.category]||0)+t.amount);
-  window.pieChartObj=new Chart(pie,{
-    type:'pie',
-    data:{labels:Object.keys(categoryTotals),datasets:[{data:Object.values(categoryTotals),backgroundColor:['#00c6ff','#ff7b00','#ff0044','#00ff88']}]}
-  });
+  let categoryTotals={};transactions.forEach(t=>categoryTotals[t.category]=(categoryTotals[t.category]||0)+t.amount);
+  window.pieChartObj=new Chart(pie,{type:'pie',data:{labels:Object.keys(categoryTotals),datasets:[{data:Object.values(categoryTotals),backgroundColor:['#00c6ff','#ff7b00','#ff0044','#00ff88']}]}})
 }
 
-// ====== Transactions Modal ======
+// ===== Card Flip =====
+function flipCard(card){card.classList.toggle("flipped");}
+
+// ===== Transactions Modal =====
 function showTransactions(bank){
-  let modal=document.getElementById("transactionsModal");
-  let div=document.getElementById("modalTransactions");
-  div.innerHTML="";
-  transactions.filter(t=>t.bank===bank).forEach(t=>{
-    div.innerHTML+=`<div class="transaction">
-      <span>${t.date} - ${t.type}</span>
-      <span>₱${t.amount}</span>
-    </div>`;
-  });
+  const modal=document.getElementById("transactionsModal");
+  const div=document.getElementById("modalTransactions");div.innerHTML="";
+  transactions.filter(t=>t.bank===bank).forEach(t=>{div.innerHTML+=`<div class="transaction"><span>${t.date} - ${t.type}</span><span>₱${t.amount}</span></div>`;});
   modal.style.display="flex";
 }
 function closeTransactions(){document.getElementById("transactionsModal").style.display="none";}
 
-// ====== Export & Scroll ======
-function exportCSV(){
-  let csv="Bank,Type,Amount,Date,Category,Note\n";
-  transactions.forEach(t=>csv+=`${t.bank},${t.type},${t.amount},${t.date},${t.category},"${t.note}"\n`);
-  let blob=new Blob([csv]);
-  let a=document.createElement("a");
-  a.href=URL.createObjectURL(blob);
-  a.download="transactions.csv";
-  a.click();
-}
-function scrollToTop(){window.scrollTo({top:0,behavior:"smooth"});}
+// ===== Export & Scroll =====
+function exportCSV(){let csv="Bank,Type,Amount,Date,Category,Note\n";transactions.forEach(t=>csv+=`${t.bank},${t.type},${t.amount},${t.date},${t.category},"${t.note}"\n`);let blob=new Blob([csv]);let a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="transactions.csv";a.click();}
+function scrollToTop(){window.scrollTo({top:0,behavior:"smooth");}
 
-// ====== Inputs ======
-const bankInput=document.getElementById("bank");
-const amountInput=document.getElementById("amount");
-const typeInput=document.getElementById("type");
-const transferBank=document.getElementById("transferBank");
-const categoryInput=document.getElementById("category");
-const noteInput=document.getElementById("note");
-
-// Service Worker
+// ===== Inputs =====
+const bankInput=document.getElementById("bank"),amountInput=document.getElementById("amount"),typeInput=document.getElementById("type"),transferBank=document.getElementById("transferBank"),categoryInput=document.getElementById("category"),noteInput=document.getElementById("note");
 if("serviceWorker" in navigator) navigator.serviceWorker.register("service-worker.js");
 </script>
 </body>
