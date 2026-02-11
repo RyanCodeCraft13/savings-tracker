@@ -1,60 +1,92 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>RN Multi-Bank Savings Tracker</title>
+<title>RN Multi-Bank Tracker V2</title>
 
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#00c6ff">
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <style>
-/* ---------------- General ---------------- */
 body{
-font-family:Segoe UI,sans-serif;
+font-family:Segoe UI;
 background:#0f2027;
 color:white;
 padding:15px;
-transition: background 0.3s, color 0.3s;
+transition:.3s;
 }
 body.light{background:#f2f2f2;color:#111;}
-h1{text-align:center;margin-bottom:15px;}
-button{cursor:pointer;border:none;border-radius:8px;padding:8px;margin-top:5px;}
-input,select,button,textarea{width:100%;padding:8px;margin-top:5px;border-radius:8px;border:none;}
-button{background:#00c6ff;color:black;font-weight:bold;}
-button:hover{opacity:.8;}
-.card{background:#1c1c1c;padding:15px;border-radius:12px;margin-top:10px;transition: background 0.3s;}
-body.light .card{background:#e0e0e0;color:#111;}
-.bank{display:flex;justify-content:space-between;margin-top:6px;padding:8px;border-radius:6px;background:#2a2a2a;}
-body.light .bank{background:#ccc;}
-.total{font-size:20px;text-align:center;margin-bottom:10px;}
-.progress{height:12px;background:#333;border-radius:6px;margin-top:5px;overflow:hidden;}
-.progress div{height:12px;background:#00c6ff;width:0%;border-radius:6px;}
-#chartContainer{width:100%;height:200px;margin-top:15px;}
-.pin-screen{position:fixed;top:0;left:0;width:100%;height:100%;background:#111;color:white;display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:999;}
-.pin-screen.light{background:#f2f2f2;color:#111;}
-.pin-screen input{width:80%;text-align:center;font-size:20px;}
-.pin-screen button{width:50%;}
-</style>
 
+.card{
+background:#1c1c1c;
+padding:15px;
+border-radius:12px;
+margin-top:10px;
+}
+body.light .card{background:#e0e0e0;color:#111;}
+
+button,input,select,textarea{
+width:100%;padding:8px;margin-top:5px;
+border-radius:8px;border:none;
+}
+button{background:#00c6ff;font-weight:bold;}
+
+.bank{
+display:flex;
+justify-content:space-between;
+background:#2a2a2a;
+padding:8px;
+margin-top:6px;
+border-radius:6px;
+}
+body.light .bank{background:#ccc;}
+
+.progress{height:10px;background:#333;border-radius:6px;margin-top:4px;}
+.progress div{height:10px;background:#00c6ff;border-radius:6px;}
+
+.pin-screen{
+position:fixed;
+top:0;left:0;width:100%;height:100%;
+background:#111;
+display:flex;
+flex-direction:column;
+justify-content:center;
+align-items:center;
+z-index:999;
+}
+
+.fab{
+position:fixed;
+bottom:20px;
+right:20px;
+background:#00c6ff;
+border-radius:50%;
+width:60px;
+height:60px;
+font-size:25px;
+}
+</style>
 </head>
+
 <body>
 
-<!-- PIN SCREEN -->
 <div id="pinScreen" class="pin-screen">
-<h2>Enter 4-Digit PIN</h2>
-<input type="password" id="pinInput" maxlength="4" placeholder="••••">
-<button onclick="checkPIN()">Unlock</button>
+<h2>Enter PIN</h2>
+<input id="pinInput" maxlength="4" type="password">
+<button onclick="unlock()">Unlock</button>
+<button onclick="changePIN()">Change PIN</button>
 </div>
 
-<h1>🏦 RN Multi-Bank Tracker</h1>
+<h1>🏦 RN Multi-Bank Tracker V2</h1>
 
-<!-- Theme Toggle -->
-<button onclick="toggleTheme()">Toggle Dark/Light Mode</button>
+<button onclick="toggleTheme()">Toggle Theme</button>
 
-<!-- Bank Operations -->
 <div class="card">
-<h3>Bank Operations</h3>
+<h3>Add Transaction</h3>
+
 <select id="bank">
 <option>GCash</option>
 <option>Maya</option>
@@ -63,7 +95,8 @@ body.light .bank{background:#ccc;}
 <option>BDO</option>
 </select>
 
-<input type="number" id="amount" placeholder="Enter Amount">
+<input id="amount" type="number" placeholder="Amount">
+
 <select id="type">
 <option value="deposit">Deposit</option>
 <option value="withdraw">Withdraw</option>
@@ -78,148 +111,174 @@ body.light .bank{background:#ccc;}
 <option>BDO</option>
 </select>
 
-<textarea id="note" placeholder="Add note (optional)"></textarea>
 <select id="category">
-<option value="General">Category: General</option>
-<option value="Food">Food</option>
-<option value="Bills">Bills</option>
-<option value="Entertainment">Entertainment</option>
-<option value="Other">Other</option>
+<option>General</option>
+<option>Food</option>
+<option>Bills</option>
+<option>Entertainment</option>
 </select>
 
-<button onclick="addTransaction()">Add Transaction</button>
+<textarea id="note" placeholder="Note"></textarea>
+
+<button onclick="addTransaction()">Add</button>
 <button onclick="exportCSV()">Export CSV</button>
+
 </div>
 
-<!-- Bank Balances -->
 <div class="card">
 <h3>Balances</h3>
 <div id="balances"></div>
 </div>
 
-<!-- Savings Goals -->
 <div class="card">
-<h3>Monthly Savings Goals</h3>
+<h3>Savings Goals</h3>
 <div id="goals"></div>
 </div>
 
-<!-- Analytics Chart -->
 <div class="card">
 <h3>Analytics</h3>
-<canvas id="chartCanvas"></canvas>
+<canvas id="lineChart"></canvas>
+<canvas id="pieChart"></canvas>
 </div>
 
-<!-- Scripts -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<button class="fab" onclick="scrollToTop()">+</button>
+
 <script>
-// ---------------- PIN LOCK ----------------
-let pin = localStorage.getItem("userPIN") || "1234";
-let unlocked = false;
-const pinScreen = document.getElementById("pinScreen");
-function checkPIN(){
-  const val=document.getElementById("pinInput").value;
-  if(val===pin){pinScreen.style.display="none"; unlocked=true; render();} 
-  else{alert("Wrong PIN");}
+
+let pin=localStorage.getItem("pin")||"1234";
+let unlocked=false;
+
+function unlock(){
+if(document.getElementById("pinInput").value===pin){
+document.getElementById("pinScreen").style.display="none";
+unlocked=true;
+render();
+}else alert("Wrong PIN");
 }
 
-// ---------------- THEME ----------------
+function changePIN(){
+let newPin=prompt("Enter new PIN");
+if(newPin) {pin=newPin; localStorage.setItem("pin",pin);}
+}
+
 function toggleTheme(){
-  document.body.classList.toggle("light");
-  document.getElementById("pinScreen").classList.toggle("light");
+document.body.classList.toggle("light");
 }
 
-// ---------------- BANK DATA ----------------
 let banks=JSON.parse(localStorage.getItem("banks"))||{
 GCash:0,Maya:0,GoTyme:0,MariBank:0,BDO:0
 };
-let goals=JSON.parse(localStorage.getItem("goals"))||{
+
+let goals={
 GCash:5000,Maya:3000,GoTyme:4000,MariBank:6000,BDO:10000
 };
+
 let transactions=JSON.parse(localStorage.getItem("transactions"))||[];
 
-// ---------------- SAVE DATA ----------------
-function saveData(){
+function save(){
 localStorage.setItem("banks",JSON.stringify(banks));
-localStorage.setItem("goals",JSON.stringify(goals));
 localStorage.setItem("transactions",JSON.stringify(transactions));
 }
 
-// ---------------- RENDER ----------------
+function addTransaction(){
+if(!unlocked)return alert("Unlock first");
+
+let bank=bankInput.value;
+let type=typeInput.value;
+let amount=parseFloat(amountInput.value);
+let transfer=transferBank.value;
+let category=categoryInput.value;
+let note=noteInput.value;
+
+if(!amount)return;
+
+if(type==="deposit") banks[bank]+=amount;
+if(type==="withdraw") banks[bank]-=amount;
+if(type==="transfer"){
+banks[bank]-=amount;
+banks[transfer]+=amount;
+}
+
+transactions.push({
+bank,type,amount,
+date:new Date().toLocaleDateString(),
+category,note
+});
+
+save();
+render();
+amountInput.value="";
+noteInput.value="";
+}
+
 function render(){
-if(!unlocked) return;
-let total=0;
+if(!unlocked)return;
+
 let balancesDiv=document.getElementById("balances");
 balancesDiv.innerHTML="";
 for(let b in banks){
-total+=banks[b];
-balancesDiv.innerHTML+=`<div class="bank"><span>${b}</span><span>₱${banks[b]}</span></div>`;
+balancesDiv.innerHTML+=`<div class="bank">${b}<span>₱${banks[b]}</span></div>`;
 }
 
-// Goals
 let goalsDiv=document.getElementById("goals");
 goalsDiv.innerHTML="";
 for(let b in banks){
-let percent=Math.min((banks[b]/goals[b])*100,100);
-goalsDiv.innerHTML+=`<p>${b}: ₱${banks[b]} / ₱${goals[b]}</p>
+let percent=(banks[b]/goals[b])*100;
+goalsDiv.innerHTML+=`
+<p>${b} ₱${banks[b]} / ₱${goals[b]}</p>
 <div class="progress"><div style="width:${percent}%"></div></div>`;
 }
 
-// Chart
-let ctx=document.getElementById("chartCanvas").getContext("2d");
-let labels=transactions.map(t=>t.date);
-let data=transactions.map(t=>t.type==="deposit"?t.amount:-t.amount);
-if(window.myChart) window.myChart.destroy();
-window.myChart=new Chart(ctx,{type:'line',data:{labels, datasets:[{label:'Balance Change', data, borderColor:'#00c6ff',backgroundColor:'rgba(0,198,255,0.2)'}]},options:{responsive:true,maintainAspectRatio:false}});
-}
+let ctx=document.getElementById("lineChart").getContext("2d");
+if(window.lineChartObj) window.lineChartObj.destroy();
+window.lineChartObj=new Chart(ctx,{
+type:'line',
+data:{
+labels:transactions.map(t=>t.date),
+datasets:[{label:'Balance Change',
+data:transactions.map(t=>t.type==="deposit"?t.amount:-t.amount),
+borderColor:'#00c6ff'}]
+}});
 
-// ---------------- ADD TRANSACTION ----------------
-function addTransaction(){
-if(!unlocked){alert("Unlock PIN first"); return;}
-let bank=document.getElementById("bank").value;
-let type=document.getElementById("type").value;
-let amount=parseFloat(document.getElementById("amount").value);
-let note=document.getElementById("note").value;
-let category=document.getElementById("category").value;
-let transferBank=document.getElementById("transferBank").value;
+let pie=document.getElementById("pieChart").getContext("2d");
+if(window.pieChartObj) window.pieChartObj.destroy();
 
-if(!amount||amount<=0){alert("Enter valid amount"); return;}
-
-let date=new Date().toLocaleString();
-
-if(type==="deposit"){banks[bank]+=amount;}
-else if(type==="withdraw"){banks[bank]-=amount;}
-else if(type==="transfer"){
-if(bank===transferBank){alert("Select different bank for transfer"); return;}
-banks[bank]-=amount;
-banks[transferBank]+=amount;
-}
-
-transactions.push({bank,type,amount,date,note,category,transferBank:type==="transfer"?transferBank:""});
-saveData();
-render();
-document.getElementById("amount").value="";
-document.getElementById("note").value="";
-}
-
-// ---------------- EXPORT CSV ----------------
-function exportCSV(){
-let csv="Bank,Type,Amount,Date,Note,Category,TransferTo\n";
+let categoryTotals={};
 transactions.forEach(t=>{
-csv+=`${t.bank},${t.type},${t.amount},${t.date},"${t.note}",${t.category},${t.transferBank}\n`;
+categoryTotals[t.category]=(categoryTotals[t.category]||0)+t.amount;
 });
-let blob=new Blob([csv],{type:"text/csv"});
-let link=document.createElement("a");
-link.href=URL.createObjectURL(blob);
-link.download="transactions.csv";
-link.click();
+
+window.pieChartObj=new Chart(pie,{
+type:'pie',
+data:{
+labels:Object.keys(categoryTotals),
+datasets:[{data:Object.values(categoryTotals)}]
+}});
 }
 
-// INITIAL RENDER
-render();
+function exportCSV(){
+let csv="Bank,Type,Amount,Date,Category,Note\n";
+transactions.forEach(t=>{
+csv+=`${t.bank},${t.type},${t.amount},${t.date},${t.category},"${t.note}"\n`;
+});
+let blob=new Blob([csv]);
+let a=document.createElement("a");
+a.href=URL.createObjectURL(blob);
+a.download="transactions.csv";
+a.click();
+}
 
-// ---------------- SERVICE WORKER ----------------
-if("serviceWorker" in navigator){navigator.serviceWorker.register("service-worker.js");}
+function scrollToTop(){window.scrollTo({top:0,behavior:"smooth"});}
+
+const bankInput=document.getElementById("bank");
+const amountInput=document.getElementById("amount");
+const typeInput=document.getElementById("type");
+const transferBank=document.getElementById("transferBank");
+const categoryInput=document.getElementById("category");
+const noteInput=document.getElementById("note");
+
+if("serviceWorker") navigator.serviceWorker.register("service-worker.js");
+
 </script>
-
 </body>
 </html>
