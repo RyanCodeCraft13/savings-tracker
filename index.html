@@ -1,284 +1,201 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>RN Multi-Bank Tracker V2</title>
-
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#00c6ff">
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<title>My Savings Tracker Gotyme Style</title>
 
 <style>
 body{
-font-family:Segoe UI;
-background:#0f2027;
-color:white;
-padding:15px;
-transition:.3s;
-}
-body.light{background:#f2f2f2;color:#111;}
-
-.card{
-background:#1c1c1c;
-padding:15px;
-border-radius:12px;
-margin-top:10px;
-}
-body.light .card{background:#e0e0e0;color:#111;}
-
-button,input,select,textarea{
-width:100%;padding:8px;margin-top:5px;
-border-radius:8px;border:none;
-}
-button{background:#00c6ff;font-weight:bold;}
-
-.bank{
+margin:0;
+font-family:'Segoe UI',sans-serif;
+background: linear-gradient(135deg,#00c6ff,#0072ff);
+min-height:100vh;
 display:flex;
-justify-content:space-between;
-background:#2a2a2a;
-padding:8px;
-margin-top:6px;
-border-radius:6px;
-}
-body.light .bank{background:#ccc;}
-
-.progress{height:10px;background:#333;border-radius:6px;margin-top:4px;}
-.progress div{height:10px;background:#00c6ff;border-radius:6px;}
-
-.pin-screen{
-position:fixed;
-top:0;left:0;width:100%;height:100%;
-background:#111;
-display:flex;
-flex-direction:column;
 justify-content:center;
 align-items:center;
-z-index:999;
+}
+
+.container{
+background:#f8f9fa;
+width:95%;
+max-width:420px;
+border-radius:20px;
+padding:20px;
+box-shadow:0 10px 25px rgba(0,0,0,0.2);
+position:relative;
+}
+
+h2{
+text-align:center;
+margin-bottom:15px;
+color:#222;
+}
+
+input, button{
+width:100%;
+padding:12px;
+margin-top:10px;
+border-radius:12px;
+border:none;
+font-size:16px;
+box-sizing:border-box;
+}
+
+input{
+border:1px solid #ddd;
+}
+
+button{
+background:#0072ff;
+color:white;
+font-weight:bold;
+cursor:pointer;
+transition:0.3s;
+}
+
+button:hover{
+opacity:0.85;
+}
+
+.list{
+margin-top:15px;
+max-height:250px;
+overflow-y:auto;
+}
+
+.card{
+background:white;
+padding:12px 15px;
+margin-bottom:10px;
+border-radius:15px;
+display:flex;
+justify-content:space-between;
+align-items:center;
+box-shadow:0 5px 15px rgba(0,0,0,0.1);
+transition:0.3s;
+}
+
+.card:hover{
+transform:translateY(-3px);
+}
+
+.progress{
+background:#eee;
+height:18px;
+border-radius:12px;
+overflow:hidden;
+margin-top:15px;
+}
+
+.bar{
+height:100%;
+background: linear-gradient(90deg,#00c6ff,#0072ff);
+width:0%;
+transition:0.5s;
+}
+
+.total{
+text-align:center;
+font-size:18px;
+margin-top:10px;
+font-weight:bold;
+color:#222;
 }
 
 .fab{
 position:fixed;
-bottom:20px;
-right:20px;
-background:#00c6ff;
-border-radius:50%;
+bottom:25px;
+right:25px;
 width:60px;
 height:60px;
-font-size:25px;
+border-radius:50%;
+background:#00c6ff;
+color:white;
+font-size:30px;
+display:flex;
+justify-content:center;
+align-items:center;
+cursor:pointer;
+box-shadow:0 5px 15px rgba(0,0,0,0.3);
+transition:0.3s;
 }
+
+.fab:hover{transform:scale(1.05);}
 </style>
 </head>
 
 <body>
 
-<div id="pinScreen" class="pin-screen">
-<h2>Enter PIN</h2>
-<input id="pinInput" maxlength="4" type="password">
-<button onclick="unlock()">Unlock</button>
-<button onclick="changePIN()">Change PIN</button>
+<div class="container">
+
+<h2>💎 Savings Tracker</h2>
+
+<input type="number" id="goal" placeholder="Set Savings Goal">
+<input type="number" id="amount" placeholder="Enter Amount">
+<button onclick="addSaving()">Add Savings</button>
+
+<div class="progress">
+<div class="bar" id="bar"></div>
 </div>
 
-<h1>🏦 RN Multi-Bank Tracker V2</h1>
+<div class="total" id="total">Total: ₱0</div>
 
-<button onclick="toggleTheme()">Toggle Theme</button>
-
-<div class="card">
-<h3>Add Transaction</h3>
-
-<select id="bank">
-<option>GCash</option>
-<option>Maya</option>
-<option>GoTyme</option>
-<option>MariBank</option>
-<option>BDO</option>
-</select>
-
-<input id="amount" type="number" placeholder="Amount">
-
-<select id="type">
-<option value="deposit">Deposit</option>
-<option value="withdraw">Withdraw</option>
-<option value="transfer">Transfer</option>
-</select>
-
-<select id="transferBank">
-<option>GCash</option>
-<option>Maya</option>
-<option>GoTyme</option>
-<option>MariBank</option>
-<option>BDO</option>
-</select>
-
-<select id="category">
-<option>General</option>
-<option>Food</option>
-<option>Bills</option>
-<option>Entertainment</option>
-</select>
-
-<textarea id="note" placeholder="Note"></textarea>
-
-<button onclick="addTransaction()">Add</button>
-<button onclick="exportCSV()">Export CSV</button>
+<div class="list" id="list"></div>
 
 </div>
 
-<div class="card">
-<h3>Balances</h3>
-<div id="balances"></div>
-</div>
-
-<div class="card">
-<h3>Savings Goals</h3>
-<div id="goals"></div>
-</div>
-
-<div class="card">
-<h3>Analytics</h3>
-<canvas id="lineChart"></canvas>
-<canvas id="pieChart"></canvas>
-</div>
-
-<button class="fab" onclick="scrollToTop()">+</button>
+<div class="fab" onclick="focusAmount()">+</div>
 
 <script>
+let savings = JSON.parse(localStorage.getItem("savings")) || [];
 
-let pin=localStorage.getItem("pin")||"1234";
-let unlocked=false;
+function saveData(){localStorage.setItem("savings",JSON.stringify(savings));}
 
-function unlock(){
-if(document.getElementById("pinInput").value===pin){
-document.getElementById("pinScreen").style.display="none";
-unlocked=true;
+function addSaving(){
+let amount = Number(document.getElementById("amount").value);
+if(!amount) return alert("Enter amount");
+savings.push(amount);
+document.getElementById("amount").value="";
+saveData();
 render();
-}else alert("Wrong PIN");
 }
 
-function changePIN(){
-let newPin=prompt("Enter new PIN");
-if(newPin) {pin=newPin; localStorage.setItem("pin",pin);}
-}
-
-function toggleTheme(){
-document.body.classList.toggle("light");
-}
-
-let banks=JSON.parse(localStorage.getItem("banks"))||{
-GCash:0,Maya:0,GoTyme:0,MariBank:0,BDO:0
-};
-
-let goals={
-GCash:5000,Maya:3000,GoTyme:4000,MariBank:6000,BDO:10000
-};
-
-let transactions=JSON.parse(localStorage.getItem("transactions"))||[];
-
-function save(){
-localStorage.setItem("banks",JSON.stringify(banks));
-localStorage.setItem("transactions",JSON.stringify(transactions));
-}
-
-function addTransaction(){
-if(!unlocked)return alert("Unlock first");
-
-let bank=bankInput.value;
-let type=typeInput.value;
-let amount=parseFloat(amountInput.value);
-let transfer=transferBank.value;
-let category=categoryInput.value;
-let note=noteInput.value;
-
-if(!amount)return;
-
-if(type==="deposit") banks[bank]+=amount;
-if(type==="withdraw") banks[bank]-=amount;
-if(type==="transfer"){
-banks[bank]-=amount;
-banks[transfer]+=amount;
-}
-
-transactions.push({
-bank,type,amount,
-date:new Date().toLocaleDateString(),
-category,note
-});
-
-save();
+function deleteSaving(index){
+savings.splice(index,1);
+saveData();
 render();
-amountInput.value="";
-noteInput.value="";
 }
 
 function render(){
-if(!unlocked)return;
+let list = document.getElementById("list");
+list.innerHTML="";
 
-let balancesDiv=document.getElementById("balances");
-balancesDiv.innerHTML="";
-for(let b in banks){
-balancesDiv.innerHTML+=`<div class="bank">${b}<span>₱${banks[b]}</span></div>`;
-}
+let total = savings.reduce((a,b)=>a+b,0);
 
-let goalsDiv=document.getElementById("goals");
-goalsDiv.innerHTML="";
-for(let b in banks){
-let percent=(banks[b]/goals[b])*100;
-goalsDiv.innerHTML+=`
-<p>${b} ₱${banks[b]} / ₱${goals[b]}</p>
-<div class="progress"><div style="width:${percent}%"></div></div>`;
-}
-
-let ctx=document.getElementById("lineChart").getContext("2d");
-if(window.lineChartObj) window.lineChartObj.destroy();
-window.lineChartObj=new Chart(ctx,{
-type:'line',
-data:{
-labels:transactions.map(t=>t.date),
-datasets:[{label:'Balance Change',
-data:transactions.map(t=>t.type==="deposit"?t.amount:-t.amount),
-borderColor:'#00c6ff'}]
-}});
-
-let pie=document.getElementById("pieChart").getContext("2d");
-if(window.pieChartObj) window.pieChartObj.destroy();
-
-let categoryTotals={};
-transactions.forEach(t=>{
-categoryTotals[t.category]=(categoryTotals[t.category]||0)+t.amount;
+savings.forEach((amt,i)=>{
+let card = document.createElement("div");
+card.className="card";
+card.innerHTML=`<span>₱${amt}</span><button onclick="deleteSaving(${i})">❌</button>`;
+list.appendChild(card);
 });
 
-window.pieChartObj=new Chart(pie,{
-type:'pie',
-data:{
-labels:Object.keys(categoryTotals),
-datasets:[{data:Object.values(categoryTotals)}]
-}});
+document.getElementById("total").innerText="Total: ₱"+total;
+
+let goal = Number(document.getElementById("goal").value);
+if(goal>0){
+let percent = (total/goal)*100;
+if(percent>100) percent=100;
+document.getElementById("bar").style.width = percent+"%";
+}else{
+document.getElementById("bar").style.width = "0%";
+}
 }
 
-function exportCSV(){
-let csv="Bank,Type,Amount,Date,Category,Note\n";
-transactions.forEach(t=>{
-csv+=`${t.bank},${t.type},${t.amount},${t.date},${t.category},"${t.note}"\n`;
-});
-let blob=new Blob([csv]);
-let a=document.createElement("a");
-a.href=URL.createObjectURL(blob);
-a.download="transactions.csv";
-a.click();
-}
+function focusAmount(){document.getElementById("amount").focus();}
 
-function scrollToTop(){window.scrollTo({top:0,behavior:"smooth"});}
-
-const bankInput=document.getElementById("bank");
-const amountInput=document.getElementById("amount");
-const typeInput=document.getElementById("type");
-const transferBank=document.getElementById("transferBank");
-const categoryInput=document.getElementById("category");
-const noteInput=document.getElementById("note");
-
-if("serviceWorker") navigator.serviceWorker.register("service-worker.js");
-
+render();
 </script>
+
 </body>
 </html>
