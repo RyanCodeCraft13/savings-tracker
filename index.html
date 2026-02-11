@@ -1,53 +1,271 @@
-<!-- Inside your render() function, replace bankCards.innerHTML generation with: -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RN Multi-Bank Tracker V2</title>
+<meta name="theme-color" content="#00c6ff">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-for(let b in banks){
-  let lastTx=transactions.filter(t=>t.bank===b).slice(-1)[0];
-  let lastTxText = lastTx ? `${lastTx.type} ₱${lastTx.amount}` : "No transactions";
-  let cardNumber="**** **** **** "+Math.floor(1000+Math.random()*9000);
-  let percent=Math.min((banks[b]/goals[b])*100,100);
+<style>
+body{
+  font-family:'Segoe UI',sans-serif;
+  background:#0f2027;color:#fff;margin:0;padding:15px;transition:.3s;
+}
+body.light{background:#f2f2f2;color:#111;}
+h1{margin-bottom:15px;}
 
-  // Gradient & logo per bank
-  let gradient="", logo="";
-  switch(b){
-    case "GCash": gradient="linear-gradient(135deg,#00ff99,#00cc77)"; logo="💰"; break;
-    case "Maya": gradient="linear-gradient(135deg,#ffcc00,#ff9900)"; logo="🟡"; break;
-    case "GoTyme": gradient="linear-gradient(135deg,#00c6ff,#0072ff)"; logo="🌀"; break;
-    case "MariBank": gradient="linear-gradient(135deg,#ff66cc,#ff0066)"; logo="🏦"; break;
-    case "BDO": gradient="linear-gradient(135deg,#9933ff,#6600cc)"; logo="💳"; break;
+/* PIN Screen */
+.pin-screen{
+  position:fixed;top:0;left:0;width:100%;height:100%;
+  background:#111;display:flex;flex-direction:column;
+  justify-content:center;align-items:center;z-index:999;
+}
+.pin-screen input{
+  padding:10px;font-size:20px;width:100px;text-align:center;border-radius:10px;border:none;margin-bottom:15px;
+}
+
+/* ATM Cards */
+#bankCards{
+  display:flex;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:15px;margin-bottom:15px;
+}
+.bank-card{
+  min-width:250px;height:160px;border-radius:20px;margin-right:15px;
+  color:white;position:relative;flex-shrink:0;scroll-snap-align:start;
+  perspective:1000px;cursor:pointer;
+}
+.bank-card-inner{
+  width:100%;height:100%;border-radius:20px;
+  transition: transform 0.6s;transform-style: preserve-3d;
+  padding:15px;display:flex;flex-direction:column;justify-content:space-between;
+  box-shadow:0 10px 25px rgba(0,0,0,0.4);
+}
+.bank-card.flipped .bank-card-inner{transform:rotateY(180deg);}
+.bank-card-front,.bank-card-back{
+  position:absolute;width:100%;height:100%;backface-visibility:hidden;border-radius:20px;padding:15px;display:flex;flex-direction:column;justify-content:space-between;
+}
+.bank-card-front{background:linear-gradient(135deg,#00c6ff,#0072ff);}
+.bank-card-back{background:#333;transform:rotateY(180deg);color:#fff;}
+
+/* Front & Back Details */
+.bank-card h2{margin:0;font-size:18px;}
+.bank-card p{margin:5px 0;font-size:22px;font-weight:bold;}
+.bank-card small{font-size:12px;opacity:.8;cursor:pointer;}
+.progress{height:6px;background:rgba(255,255,255,.2);border-radius:6px;overflow:hidden;}
+.progress div{height:6px;background:#fff;width:0%;border-radius:6px;transition:.5s;}
+.card-back-content{margin-top:20px;font-size:14px;line-height:1.4;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+
+/* Modal Transactions */
+#transactionsModal{
+  position:fixed;top:0;left:0;width:100%;height:100%;
+  background:rgba(0,0,0,0.95);display:none;flex-direction:column;padding:20px;overflow-y:auto;z-index:1000;color:#fff;
+}
+.transaction{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #555;}
+
+/* FAB Button */
+.fab{
+  position:fixed;bottom:20px;right:20px;background:#00c6ff;border-radius:50%;
+  width:60px;height:60px;font-size:30px;color:#fff;display:flex;justify-content:center;align-items:center;
+  cursor:pointer;box-shadow:0 5px 15px rgba(0,0,0,0.3);
+}
+
+/* Buttons & Inputs */
+button,input,select,textarea{
+  width:100%;padding:10px;margin-top:5px;border-radius:8px;border:none;font-size:16px;
+}
+button{background:#00c6ff;color:white;font-weight:bold;cursor:pointer;}
+button:hover{opacity:.85;}
+</style>
+</head>
+<body>
+
+<!-- PIN Screen -->
+<div id="pinScreen" class="pin-screen">
+<h2>Enter PIN</h2>
+<input id="pinInput" maxlength="4" type="password">
+<button onclick="unlock()">Unlock</button>
+<button onclick="changePIN()">Change PIN</button>
+</div>
+
+<h1>🏦 RN Multi-Bank Tracker V2</h1>
+<button onclick="toggleTheme()">Toggle Theme</button>
+
+<!-- ATM Cards -->
+<div id="bankCards"></div>
+
+<!-- Transaction Modal -->
+<div id="transactionsModal">
+<button onclick="closeTransactions()" style="margin-bottom:10px;">Close</button>
+<h2>Transactions</h2>
+<div id="modalTransactions"></div>
+</div>
+
+<!-- Add Transaction -->
+<div class="card">
+<h3>Add Transaction</h3>
+<select id="bank">
+<option>GCash</option>
+<option>Maya</option>
+<option>GoTyme</option>
+<option>MariBank</option>
+<option>BDO</option>
+</select>
+<input id="amount" type="number" placeholder="Amount">
+<select id="type">
+<option value="deposit">Deposit</option>
+<option value="withdraw">Withdraw</option>
+<option value="transfer">Transfer</option>
+</select>
+<select id="transferBank">
+<option>GCash</option>
+<option>Maya</option>
+<option>GoTyme</option>
+<option>MariBank</option>
+<option>BDO</option>
+</select>
+<select id="category">
+<option>General</option>
+<option>Food</option>
+<option>Bills</option>
+<option>Entertainment</option>
+</select>
+<textarea id="note" placeholder="Note"></textarea>
+<button onclick="addTransaction()">Add</button>
+<button onclick="exportCSV()">Export CSV</button>
+</div>
+
+<!-- Goals & Analytics -->
+<div class="card">
+<h3>Savings Goals</h3>
+<div id="goals"></div>
+</div>
+<div class="card">
+<h3>Analytics</h3>
+<canvas id="lineChart"></canvas>
+<canvas id="pieChart"></canvas>
+</div>
+
+<!-- FAB -->
+<div class="fab" onclick="scrollToTop()">+</div>
+
+<script>
+// ===== PIN & Theme =====
+let pin=localStorage.getItem("pin")||"1234";
+let unlocked=false;
+function unlock(){if(document.getElementById("pinInput").value===pin){document.getElementById("pinScreen").style.display="none";unlocked=true;render();}else alert("Wrong PIN");}
+function changePIN(){let newPin=prompt("Enter new PIN");if(newPin){pin=newPin;localStorage.setItem("pin",pin);}}
+function toggleTheme(){document.body.classList.toggle("light");}
+
+// ===== Bank Data =====
+let banks=JSON.parse(localStorage.getItem("banks"))||{GCash:0,Maya:0,GoTyme:0,MariBank:0,BDO:0};
+let goals={GCash:5000,Maya:3000,GoTyme:4000,MariBank:6000,BDO:10000};
+let transactions=JSON.parse(localStorage.getItem("transactions"))||[];
+
+// ===== Add Transaction =====
+function save(){localStorage.setItem("banks",JSON.stringify(banks));localStorage.setItem("transactions",JSON.stringify(transactions));}
+function addTransaction(){
+  if(!unlocked)return alert("Unlock first");
+  let bank=bankInput.value,type=typeInput.value,amount=parseFloat(amountInput.value),transfer=transferBank.value,category=categoryInput.value,note=noteInput.value;
+  if(!amount)return;
+  if(type==="deposit") banks[bank]+=amount;
+  if(type==="withdraw") banks[bank]-=amount;
+  if(type==="transfer"){banks[bank]-=amount;banks[transfer]+=amount;}
+  transactions.push({bank,type,amount,date:new Date().toLocaleDateString(),category,note});
+  save();render();amountInput.value="";noteInput.value="";
+}
+
+// ===== Render UI =====
+function render(){
+  if(!unlocked)return;
+  const bankCards=document.getElementById("bankCards"); bankCards.innerHTML="";
+  for(let b in banks){
+    let lastTx=transactions.filter(t=>t.bank===b).slice(-1)[0];
+    let lastTxText = lastTx ? `${lastTx.type} ₱${lastTx.amount}` : "No transactions";
+    let cardNumber="**** **** **** "+Math.floor(1000+Math.random()*9000);
+    let percent=Math.min((banks[b]/goals[b])*100,100);
+
+    // Gradient & logo per bank
+    let gradient="", logo="";
+    switch(b){
+      case "GCash": gradient="linear-gradient(135deg,#00ff99,#00cc77)"; logo="💰"; break;
+      case "Maya": gradient="linear-gradient(135deg,#ffcc00,#ff9900)"; logo="🟡"; break;
+      case "GoTyme": gradient="linear-gradient(135deg,#00c6ff,#0072ff)"; logo="🌀"; break;
+      case "MariBank": gradient="linear-gradient(135deg,#ff66cc,#ff0066)"; logo="🏦"; break;
+      case "BDO": gradient="linear-gradient(135deg,#9933ff,#6600cc)"; logo="💳"; break;
+    }
+
+    bankCards.innerHTML+=`
+    <div class="bank-card" onclick="flipCard(this)">
+      <div class="bank-card-inner">
+        <div class="bank-card-front" style="background:${gradient}">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <h2>${b}</h2><span style="font-size:20px">${logo}</span>
+          </div>
+          <p>₱${banks[b]}</p>
+          <div class="progress"><div style="width:${percent}%"></div></div>
+          <small onclick="showTransactions('${b}')">Last: ${lastTxText}</small>
+        </div>
+        <div class="bank-card-back">
+          <div class="card-back-content">
+            <p id="cardNumber${b}">Card Number: **** **** **** ****</p>
+            <p>Expiry: 12/30</p>
+            <p>CVV: ***</p>
+            <canvas id="qr${b}" width="80" height="80"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+    // Animate card number
+    setTimeout(()=>{
+      let numEl=document.getElementById(`cardNumber${b}`);
+      let numText="Card Number: "+cardNumber;
+      let i=0;
+      function type(){if(i<=numText.length){numEl.innerText=numText.slice(0,i);i++;setTimeout(type,30);}}
+      type();
+    },500);
+
+    // Draw QR code placeholder
+    let qr=document.getElementById(`qr${b}`);
+    if(qr){let ctx=qr.getContext("2d");ctx.fillStyle="#fff";ctx.fillRect(0,0,80,80);ctx.fillStyle="#000";for(let x=0;x<80;x+=10){for(let y=0;y<80;y+=10){if(Math.random()>0.5)ctx.fillRect(x,y,10,10);}}}
   }
 
-  bankCards.innerHTML+=`
-  <div class="bank-card" onclick="flipCard(this)">
-    <div class="bank-card-inner">
-      <div class="bank-card-front" style="background:${gradient}">
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <h2>${b}</h2><span style="font-size:20px">${logo}</span>
-        </div>
-        <p>₱${banks[b]}</p>
-        <div class="progress"><div style="width:${percent}%"></div></div>
-        <small style="cursor:pointer" onclick="showTransactions('${b}')">Last: ${lastTxText}</small>
-      </div>
-      <div class="bank-card-back">
-        <div class="card-back-content">
-          <p id="cardNumber${b}">Card Number: **** **** **** ****</p>
-          <p>Expiry: 12/30</p>
-          <p>CVV: ***</p>
-          <canvas id="qr${b}" width="80" height="80"></canvas>
-        </div>
-      </div>
-    </div>
-  </div>`;
+  // Goals
+  let goalsDiv=document.getElementById("goals");goalsDiv.innerHTML="";
+  for(let b in banks){let percent=Math.min((banks[b]/goals[b])*100,100);
+    goalsDiv.innerHTML+=`<p>${b} ₱${banks[b]} / ₱${goals[b]}</p><div class="progress"><div style="width:${percent}%"></div></div>`;}
 
-  // Animate card number
-  setTimeout(()=>{
-    let numEl=document.getElementById(`cardNumber${b}`);
-    let numText="Card Number: "+cardNumber;
-    let i=0;
-    function type(){if(i<=numText.length){numEl.innerText=numText.slice(0,i);i++;setTimeout(type,30);}}
-    type();
-  },500);
-
-  // Draw QR code (simple placeholder)
-  let qr=document.getElementById(`qr${b}`);
-  if(qr){let ctx=qr.getContext("2d");ctx.fillStyle="#fff";ctx.fillRect(0,0,80,80);ctx.fillStyle="#000";for(let x=0;x<80;x+=10){for(let y=0;y<80;y+=10){if(Math.random()>0.5)ctx.fillRect(x,y,10,10);}}}
+  // Charts
+  let ctx=document.getElementById("lineChart").getContext("2d");
+  if(window.lineChartObj) window.lineChartObj.destroy();
+  window.lineChartObj=new Chart(ctx,{type:'line',data:{labels:transactions.map(t=>t.date),datasets:[{label:'Balance Change',data:transactions.map(t=>t.type==="deposit"?t.amount:-t.amount),borderColor:'#00c6ff',fill:false}]}});
+  let pie=document.getElementById("pieChart").getContext("2d");
+  if(window.pieChartObj) window.pieChartObj.destroy();
+  let categoryTotals={};transactions.forEach(t=>categoryTotals[t.category]=(categoryTotals[t.category]||0)+t.amount);
+  window.pieChartObj=new Chart(pie,{type:'pie',data:{labels:Object.keys(categoryTotals),datasets:[{data:Object.values(categoryTotals),backgroundColor:['#00c6ff','#ff7b00','#ff0044','#00ff88']}]}})
 }
+
+// Flip Card
+function flipCard(card){card.classList.toggle("flipped");}
+
+// Transactions Modal
+function showTransactions(bank){
+  const modal=document.getElementById("transactionsModal");
+  const div=document.getElementById("modalTransactions");div.innerHTML="";
+  transactions.filter(t=>t.bank===bank).forEach(t=>{div.innerHTML+=`<div class="transaction"><span>${t.date} - ${t.type}</span><span>₱${t.amount}</span></div>`;});
+  modal.style.display="flex";
+}
+function closeTransactions(){document.getElementById("transactionsModal").style.display="none";}
+
+// Export & Scroll
+function exportCSV(){let csv="Bank,Type,Amount,Date,Category,Note\n";transactions.forEach(t=>csv+=`${t.bank},${t.type},${t.amount},${t.date},${t.category},"${t.note}"\n`);let blob=new Blob([csv]);let a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="transactions.csv";a.click();}
+function scrollToTop(){window.scrollTo({top:0,behavior:"smooth"});}
+
+// Inputs
+const bankInput=document.getElementById("bank"),amountInput=document.getElementById("amount"),typeInput=document.getElementById("type"),transferBank=document.getElementById("transferBank"),categoryInput=document.getElementById("category"),noteInput=document.getElementById("note");
+
+// Service Worker
+if("serviceWorker" in navigator) navigator.serviceWorker.register("service-worker.js");
+</script>
+</body>
+</html>
