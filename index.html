@@ -9,94 +9,71 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-/* ====== Body & Theme ====== */
 body{
   font-family: 'Segoe UI', sans-serif;
   background: #0f2027;
   color: #fff;
-  margin: 0;
-  padding: 15px;
+  margin: 0; padding: 15px;
   transition: .3s;
 }
 body.light{background:#f2f2f2;color:#111;}
 
-/* ====== ATM Cards ====== */
-.card {
-  border-radius: 20px;
-  padding: 20px;
-  margin: 15px 0;
-  background: linear-gradient(135deg,#1c1c1c,#333);
-  box-shadow: 0 10px 25px rgba(0,0,0,0.4);
-  transition: .3s;
-}
-body.light .card{
-  background: linear-gradient(135deg,#e0e0e0,#c0c0c0);
-  color:#111;
-}
-.bank-card {
-  background: linear-gradient(135deg,#00c6ff,#0072ff);
-  border-radius: 18px;
-  padding: 20px;
-  margin-bottom: 15px;
-  color: white;
-  position: relative;
-  overflow: hidden;
-}
-.bank-card h2, .bank-card p{margin:0;}
-
-/* ====== FAB Button ====== */
-.fab{
-  position:fixed;
-  bottom:20px;
-  right:20px;
-  background:#00c6ff;
-  border-radius:50%;
-  width:60px;
-  height:60px;
-  font-size:30px;
-  color:#fff;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  cursor:pointer;
-  box-shadow:0 5px 15px rgba(0,0,0,0.3);
-}
+h1{margin-bottom:15px;}
 
 /* ====== PIN Screen ====== */
 .pin-screen{
-  position:fixed;
-  top:0;left:0;width:100%;height:100%;
-  background:#111;
-  display:flex;flex-direction:column;
-  justify-content:center;
-  align-items:center;
-  z-index:999;
+  position:fixed;top:0;left:0;width:100%;height:100%;
+  background:#111;display:flex;flex-direction:column;
+  justify-content:center;align-items:center;z-index:999;
   transition:.3s;
 }
 .pin-screen h2{margin-bottom:10px;}
 .pin-screen input{
-  padding:10px;
-  font-size:20px;
-  width:100px;
-  text-align:center;
-  border-radius:10px;
-  border:none;
-  margin-bottom:15px;
+  padding:10px;font-size:20px;width:100px;text-align:center;
+  border-radius:10px;border:none;margin-bottom:15px;
 }
 
-/* ====== Transactions ====== */
-.transaction {
-  display:flex;
-  justify-content:space-between;
-  padding:10px 0;
-  border-bottom:1px solid #555;
+/* ====== ATM Cards ====== */
+#bankCards{
+  display:flex;overflow-x:auto;scroll-snap-type:x mandatory;
+  padding-bottom:15px;
+  margin-bottom:15px;
+}
+.bank-card{
+  min-width:250px;
+  height:150px;
+  background:linear-gradient(135deg,#00c6ff,#0072ff);
+  color:white;
+  border-radius:20px;
+  margin-right:15px;
+  padding:15px;
+  flex-shrink:0;
+  scroll-snap-align:start;
+  position:relative;
+  box-shadow:0 10px 25px rgba(0,0,0,0.4);
+  cursor:pointer;
+  transition:.3s;
+}
+.bank-card:hover{transform:scale(1.05);}
+.bank-card h2{margin:0;font-size:18px;}
+.bank-card p{margin:5px 0;font-size:22px;font-weight:bold;}
+.bank-card small{position:absolute;bottom:10px;left:15px;font-size:12px;opacity:0.8;}
+
+/* ====== Transaction Modal ====== */
+#transactionsModal{
+  position:fixed;top:0;left:0;width:100%;height:100%;
+  background:rgba(0,0,0,0.9);
+  display:none;flex-direction:column;padding:20px;
+  overflow-y:auto;z-index:1000;
+}
+#transactionsModal h2{text-align:center;}
+.transaction{
+  display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #555;
 }
 
 /* ====== Buttons & Inputs ====== */
 button,input,select,textarea{
-  width:100%;padding:10px;margin-top:5px;
-  border-radius:8px;border:none;
-  font-size:16px;
+  width:100%;padding:10px;margin-top:5px;border-radius:8px;border:none;font-size:16px;
 }
 button{background:#00c6ff;color:white;font-weight:bold;cursor:pointer;}
 button:hover{opacity:.85;}
@@ -108,6 +85,15 @@ input,select,textarea{font-size:16px;}
 
 /* ====== Charts ====== */
 canvas{margin-top:10px;}
+
+/* ====== FAB ====== */
+.fab{
+  position:fixed;bottom:20px;right:20px;
+  background:#00c6ff;border-radius:50%;
+  width:60px;height:60px;font-size:30px;
+  color:#fff;display:flex;justify-content:center;align-items:center;
+  cursor:pointer;box-shadow:0 5px 15px rgba(0,0,0,0.3);
+}
 </style>
 </head>
 <body>
@@ -126,6 +112,13 @@ canvas{margin-top:10px;}
 <!-- ATM Cards -->
 <div id="bankCards"></div>
 
+<!-- Transaction Modal -->
+<div id="transactionsModal">
+<button onclick="closeTransactions()" style="margin-bottom:10px;">Close</button>
+<h2>Transactions</h2>
+<div id="modalTransactions"></div>
+</div>
+
 <!-- Add Transaction -->
 <div class="card">
 <h3>Add Transaction</h3>
@@ -136,14 +129,12 @@ canvas{margin-top:10px;}
 <option>MariBank</option>
 <option>BDO</option>
 </select>
-
 <input id="amount" type="number" placeholder="Amount">
 <select id="type">
 <option value="deposit">Deposit</option>
 <option value="withdraw">Withdraw</option>
 <option value="transfer">Transfer</option>
 </select>
-
 <select id="transferBank">
 <option>GCash</option>
 <option>Maya</option>
@@ -151,14 +142,12 @@ canvas{margin-top:10px;}
 <option>MariBank</option>
 <option>BDO</option>
 </select>
-
 <select id="category">
 <option>General</option>
 <option>Food</option>
 <option>Bills</option>
 <option>Entertainment</option>
 </select>
-
 <textarea id="note" placeholder="Note"></textarea>
 <button onclick="addTransaction()">Add</button>
 <button onclick="exportCSV()">Export CSV</button>
@@ -237,12 +226,15 @@ function render(){
   let bankCards=document.getElementById("bankCards");
   bankCards.innerHTML="";
   for(let b in banks){
+    let lastTx=transactions.filter(t=>t.bank===b).slice(-1)[0];
+    let lastTxText = lastTx ? `${lastTx.type} ₱${lastTx.amount}` : "No transactions";
     bankCards.innerHTML+=`
-    <div class="bank-card">
-      <h2>${b}</h2>
-      <p>₱${banks[b]}</p>
-      <small>Goal: ₱${goals[b]}</small>
-    </div>`;
+      <div class="bank-card" onclick="showTransactions('${b}')">
+        <h2>${b}</h2>
+        <p>₱${banks[b]}</p>
+        <small>Goal: ₱${goals[b]}</small><br>
+        <small>Last: ${lastTxText}</small>
+      </div>`;
   }
 
   // Goals
@@ -275,6 +267,21 @@ function render(){
     data:{labels:Object.keys(categoryTotals),datasets:[{data:Object.values(categoryTotals),backgroundColor:['#00c6ff','#ff7b00','#ff0044','#00ff88']}]}
   });
 }
+
+// ====== Transactions Modal ======
+function showTransactions(bank){
+  let modal=document.getElementById("transactionsModal");
+  let div=document.getElementById("modalTransactions");
+  div.innerHTML="";
+  transactions.filter(t=>t.bank===bank).forEach(t=>{
+    div.innerHTML+=`<div class="transaction">
+      <span>${t.date} - ${t.type}</span>
+      <span>₱${t.amount}</span>
+    </div>`;
+  });
+  modal.style.display="flex";
+}
+function closeTransactions(){document.getElementById("transactionsModal").style.display="none";}
 
 // ====== Export & Scroll ======
 function exportCSV(){
